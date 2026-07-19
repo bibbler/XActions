@@ -124,3 +124,6 @@ tmp/
 .mcp.json
 CLAUDE.local.md
 .husky/prepare-commit-msg
+
+# GCP deploy secrets (never commit)
+deploy/gcp/.env.gcp

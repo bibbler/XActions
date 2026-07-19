@@ -96,7 +96,8 @@
     "site:deploy": "npm run site:build && npx wrangler pages deploy pages-out --project-name xactions",
     "lint": "eslint .",
     "registry:sync": "node scripts/sync-registry.mjs",
-    "check:x402": "node scripts/check-x402-routes.mjs"
+    "check:x402": "node scripts/check-x402-routes.mjs",
+    "deploy:gcp": "bash deploy/gcp/deploy.sh"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
