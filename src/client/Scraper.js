@@ -341,7 +341,9 @@ export class Scraper {
    */
   async saveCookies(filePath) {
     const cookies = await this.getCookies();
-    await fs.writeFile(filePath, JSON.stringify(cookies, null, 2), 'utf-8');
+    // Session cookies: readable by their owner only.
+    await fs.writeFile(filePath, JSON.stringify(cookies, null, 2), { encoding: 'utf-8', mode: 0o600 });
+    await fs.chmod(filePath, 0o600);
   }
 
   /**

@@ -23,9 +23,11 @@ import { createRequire } from 'module';
 const CONFIG_DIR = path.join(os.homedir(), '.xactions');
 const PLUGINS_FILE = path.join(CONFIG_DIR, 'plugins.json');
 
+// Whole-name patterns (a valid npm package name and nothing else): a prefix
+// test once accepted "xactions-plugin-x; <any shell command>".
 const PLUGIN_NAME_PATTERNS = [
-  /^xactions-plugin-/,
-  /^@xactions\//,
+  /^xactions-plugin-[a-z0-9][a-z0-9._-]*(@[a-z0-9.^~<>=*-]+)?$/,
+  /^@xactions\/[a-z0-9][a-z0-9._-]*(@[a-z0-9.^~<>=*-]+)?$/,
 ];
 
 // ============================================================================

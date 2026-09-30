@@ -54,8 +54,11 @@ async function loadConfig() {
 }
 
 async function saveConfig(config) {
-  await fs.mkdir(CONFIG_DIR, { recursive: true });
-  await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
+  // Holds the X auth_token: owner-only, and tightened on files an older
+  // version already created world-readable.
+  await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
+  await fs.writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+  await fs.chmod(CONFIG_FILE, 0o600);
 }
 
 /** Where the full cookie jar lives; `createHttpScraper` reads this first. */
@@ -73,6 +76,7 @@ const COOKIE_FILE = path.join(CONFIG_DIR, 'cookies.json');
 async function saveImportedSession(cookies) {
   await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
   await fs.writeFile(COOKIE_FILE, JSON.stringify(cookies, null, 2), { encoding: 'utf-8', mode: 0o600 });
+  await fs.chmod(COOKIE_FILE, 0o600);
 
   const authToken = cookies.find((c) => c.name === 'auth_token')?.value;
   const csrfToken = cookies.find((c) => c.name === 'ct0')?.value;
@@ -441,8 +445,12 @@ program
   .action(async () => {
     const config = await loadConfig();
     delete config.authToken;
+    delete config.csrfToken;
     await saveConfig(config);
-    console.log(chalk.green('\n✓ Logged out successfully\n'));
+    // `login --from-browser` and `--cookies-file` save the session here, and it
+    // is read before the config, so leaving it kept the session logged in.
+    await fs.rm(COOKIE_FILE, { force: true });
+    console.log(chalk.green('\n✓ Logged out: the saved session and cookies are removed\n'));
   });
 
 // ============================================================================

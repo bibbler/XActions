@@ -153,8 +153,8 @@ scripts.
 | `PORT` | `3001` | HTTP port. |
 | `API_URL` | `http://localhost:3001` | Public base URL, used in generated links. |
 | `FRONTEND_URL` | `http://localhost:3000` | Used for CORS and redirects. |
-| `CORS_ORIGINS` | localhost origins | Comma-separated allowlist. |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
+| `DEV_ORIGINS` | localhost:3000, 3001, 5173 | Development only: the comma-separated CORS origins, replacing the localhost defaults. Production allows `https://xactions.app` and `FRONTEND_URL`. |
+| `TRUST_PROXY` | `1` on Fly, Railway and Render; off elsewhere | How many proxies sit in front of the API, so rate limits see the real client IP (any Express `trust proxy` value works). Never set it higher than the real number of proxies: clients could then choose their own IP with `X-Forwarded-For`. |
 
 ### Security
 

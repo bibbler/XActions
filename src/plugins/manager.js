@@ -8,7 +8,7 @@
  * @license Apache-2.0
  */
 
-import { execSync } from 'child_process';
+import { execFileSync } from 'child_process';
 import {
   readPluginsConfig,
   writePluginsConfig,
@@ -63,7 +63,8 @@ export async function installPlugin(name) {
   // Install via npm if it's a package name
   if (!isLocal) {
     try {
-      execSync(`npm install ${name}`, { stdio: 'pipe', cwd: process.cwd() });
+      // No shell: the name is one argument, so it cannot carry a second command.
+      execFileSync('npm', ['install', '--', name], { stdio: 'pipe', cwd: process.cwd() });
     } catch (error) {
       throw new Error(`Failed to install "${name}": ${error.message}`);
     }
@@ -117,7 +118,7 @@ export async function removePlugin(name) {
   // Uninstall npm package if applicable
   if (entry.package && !entry.path) {
     try {
-      execSync(`npm uninstall ${entry.package}`, { stdio: 'pipe', cwd: process.cwd() });
+      execFileSync('npm', ['uninstall', '--', entry.package], { stdio: 'pipe', cwd: process.cwd() });
     } catch {
       // Non-fatal — config will be cleaned up regardless
     }

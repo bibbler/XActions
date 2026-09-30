@@ -108,6 +108,20 @@ import { generateSpec as generateOpenAPISpec, generateWellKnown as generateX402W
 const PORT = process.env.PORT || 3001;
 
 /**
+ * The Express 'trust proxy' value for this environment, or false.
+ * @param {Record<string, string|undefined>} env
+ * @returns {number|string|false}
+ */
+export function resolveTrustProxy(env) {
+  const explicit = env.TRUST_PROXY?.trim();
+  if (explicit) {
+    if (/^(false|0|off|no)$/i.test(explicit)) return false;
+    return /^\d+$/.test(explicit) ? Number(explicit) : explicit;
+  }
+  return env.FLY_APP_NAME || env.RAILWAY_ENVIRONMENT || env.RENDER ? 1 : false;
+}
+
+/**
  * Build the Express app, its HTTP server, and the Socket.io instance without
  * binding a port. `npm start` calls `start()` below; tests and embedders call
  * this directly so nothing listens, no scheduler runs, and no telemetry fires.
@@ -119,6 +133,17 @@ const PORT = process.env.PORT || 3001;
  */
 export function createApp({ rateLimiting = true } = {}) {
   const app = express();
+
+  // Client IPs behind a proxy. Without this, every request behind Fly,
+  // Railway, Render or Cloudflare carries the proxy's IP, so the rate limits
+  // apply to the whole site at once and one caller can lock everyone out of
+  // login. Trusting a proxy that is not there is the opposite risk: a caller
+  // could set X-Forwarded-For and pick their own IP, and with it their own
+  // rate-limit bucket. So it is on only when the operator says how many
+  // proxies sit in front (TRUST_PROXY, a hop count or an Express trust value)
+  // or the app runs on a platform known to put exactly one in front.
+  const trustProxy = resolveTrustProxy(process.env);
+  if (trustProxy !== false) app.set('trust proxy', trustProxy);
   const httpServer = createServer(app);
 
   // Initialize Socket.io for real-time browser-to-browser communication
