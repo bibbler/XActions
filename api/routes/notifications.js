@@ -6,14 +6,17 @@
  */
 
 import { Router } from 'express';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
 // Notification channels are the owner's own Slack, Discord, Telegram and
 // email hooks, so reading or firing them needs the same authentication as
 // /api/crm and /api/automations.
-router.use(authMiddleware);
+// These routes drive the server's single, operator-wide instance (not
+// per-user state), so they are for the operator: any signed-in user could
+// once read or change them.
+router.use(authMiddleware, requireAdmin);
 
 // GET /api/notifications
 // Documented in api/openapi.js and, until now, never served. Reports the

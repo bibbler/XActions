@@ -59,6 +59,10 @@ export class Scheduler extends EventEmitter {
     if (!name || !cronExpr || !command) {
       throw new Error('Job requires: name, cron, command');
     }
+    // The name becomes part of the history file path, so it must be a plain name.
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(name) || name.includes('..')) {
+      throw new Error(`Invalid job name "${String(name).slice(0, 64)}": use letters, digits, ".", "-" and "_"`);
+    }
 
     if (!cron.validate(cronExpr)) {
       throw new Error(`Invalid cron expression: ${cronExpr}`);

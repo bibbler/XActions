@@ -120,3 +120,33 @@ describe('callback URLs cannot reach the server\'s own network', () => {
     expect(res.status).toBe(401);
   });
 });
+
+describe('routes that once had no authorization', () => {
+  it('teams, agent control and the operator-wide routes refuse anonymous callers', async () => {
+    const calls = [
+      ['post', '/api/teams', { name: 'poc', owner: 'attacker' }],
+      ['get', '/api/teams/t1/members'],
+      ['post', '/api/teams/t1/invite', { email: 'a@b.c' }],
+      ['delete', '/api/teams/t1/members/someone'],
+      ['get', '/api/teams/t1/activity'],
+      ['post', '/api/agent/start', { configPath: '/etc/passwd' }],
+      ['get', '/api/agent/status'],
+      ['get', '/api/agent/actions'],
+      ['post', '/api/schedule', { name: '../../x', cron: '* * * * *', command: 'help' }],
+      ['post', '/api/notifications/configure', {}],
+      ['delete', '/api/streams'],
+    ];
+    for (const [method, url, body] of calls) {
+      const res = await request(app)[method](url).send(body || {});
+      expect(res.status, `${method.toUpperCase()} ${url}`).toBe(401);
+    }
+  });
+
+  it('scheduler job names cannot leave the history directory', async () => {
+    const { Scheduler } = await import('../../src/scheduler/scheduler.js');
+    const scheduler = new Scheduler();
+    for (const name of ['../../escape', 'a/b', '.hidden', '']) {
+      expect(() => scheduler.addJob({ name, cron: '0 0 1 1 *', command: 'help', enabled: false }), name).toThrow(/Invalid job name|requires/);
+    }
+  });
+});
