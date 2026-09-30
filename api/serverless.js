@@ -6,6 +6,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { paymentGatePath } from './utils/paymentGatePath.js';
 
 dotenv.config();
 
@@ -77,14 +78,14 @@ const USDC_ADDRESSES = {
  * without requiring the full @x402/express SDK.
  */
 function x402Gate(req, res, next) {
-  const isAiPath = req.path.startsWith('/api/ai/');
-  if (!isAiPath) return next();
+  // Compared the way Express routes it, so a mixed-case path cannot skip it.
+  const gatePath = paymentGatePath(req.path);
+  if (!gatePath.startsWith('/api/ai/')) return next();
 
   // Free endpoints pass through
   if (
-    req.path === '/api/ai/' ||
-    req.path === '/api/ai/health' ||
-    req.path === '/api/ai/pricing'
+    gatePath === '/api/ai/health' ||
+    gatePath === '/api/ai/pricing'
   ) return next();
 
   // A payment header is not proof of payment: anyone can set a header, and this

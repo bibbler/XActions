@@ -81,7 +81,7 @@ const PROGRAMMATIC_HEADERS = [
  */
 export function isAIAgent(req) {
   // Explicit AI endpoint - always AI
-  if (req.path.startsWith('/api/ai/')) {
+  if (req.path.toLowerCase().startsWith('/api/ai/')) {
     return true;
   }
   

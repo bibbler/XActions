@@ -16,6 +16,7 @@
  * @author nichxbt
  */
 
+import { paymentGatePath } from '../utils/paymentGatePath.js';
 import {
   PAY_TO_ADDRESS,
   PAY_TO_ADDRESS_SOLANA,
@@ -288,8 +289,9 @@ function extractOperation(requirements) {
  * Falls through gracefully if x402 is not configured (development mode).
  */
 export async function x402Middleware(req, res, next) {
-  const isAiPath = req.path.startsWith('/api/ai/');
-  const isScriptsPath = req.path.startsWith('/api/scripts/');
+  const gatePath = paymentGatePath(req.path);
+  const isAiPath = gatePath.startsWith('/api/ai/');
+  const isScriptsPath = gatePath.startsWith('/api/scripts/');
 
   if (!isAiPath && !isScriptsPath) {
     return next();
@@ -297,11 +299,9 @@ export async function x402Middleware(req, res, next) {
 
   // Free endpoints: AI health/pricing + scripts listing + session validation
   if (
-    req.path === '/api/ai/health' ||
-    req.path === '/api/ai/pricing' ||
-    req.path === '/api/ai/action/validate-session' ||
-    req.path === '/api/scripts' ||
-    req.path === '/api/scripts/'
+    gatePath === '/api/ai/health' ||
+    gatePath === '/api/ai/pricing' ||
+    gatePath === '/api/ai/action/validate-session'
   ) {
     return next();
   }
