@@ -348,7 +348,7 @@ See `.env.example` for the full list. Required for production:
 |---|---|---|
 | `DATABASE_URL` | ✅ | PostgreSQL connection string |
 | `JWT_SECRET` | ✅ | Auth token signing key |
-| `SESSION_SECRET` | Recommended | Session encryption key |
+| `SESSION_SECRET` | ✅ | Encrypts saved X sessions. The API and the worker must share it; `docker compose` refuses to start without it. Changing it makes saved sessions unreadable. |
 | `REDIS_HOST` | Recommended | Redis host for job queue |
 | `REDIS_PORT` | Recommended | Redis port (default: 6379) |
 | `NODE_ENV` | Recommended | Set to `production` |
