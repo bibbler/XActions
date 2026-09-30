@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import crypto from 'node:crypto';
 import { SESSION_KEYS, createJobContext, isPermanentFailure, sessionHashOf } from './processors/context.js';
 import { assertRunnable, loadProcessors } from './processors/registry.js';
+import { assertPublicUrl } from '../utils/publicUrl.js';
 
 const prisma = new PrismaClient();
 
@@ -41,6 +42,7 @@ const processors = await loadProcessors();
  */
 async function addJob(type, data, options = {}) {
   assertRunnable(processors, type);
+  await checkCallbackUrl(data.config);
 
   // Create operation record in database
   const operation = await prisma.operation.create({
@@ -82,6 +84,7 @@ async function addJob(type, data, options = {}) {
  */
 async function queueJob(jobData) {
   assertRunnable(processors, jobData.type);
+  await checkCallbackUrl(jobData.config);
 
   const jobId = String(jobData.operationId || jobData.id || `op-${crypto.randomUUID()}`);
   const data = {
@@ -366,15 +369,30 @@ function parseResult(stored) {
   }
 }
 
-/** Fire a best-effort POST to a callbackUrl with the job result */
-function deliverCallback(url, payload) {
+/**
+ * Best-effort POST of the job result to the caller's callbackUrl. The URL is
+ * checked again at delivery (DNS can change after queueing) and redirects are
+ * not followed, so a callback cannot be steered at the server's own network.
+ */
+async function deliverCallback(url, payload) {
   if (!url) return;
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-XActions-Event': payload.event },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(10_000),
-  }).catch(err => console.warn(`⚠️  callbackUrl delivery failed (${url}): ${err.message}`));
+  try {
+    await assertPublicUrl(url, 'callbackUrl');
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-XActions-Event': payload.event },
+      body: JSON.stringify(payload),
+      redirect: 'manual',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    console.warn(`⚠️  callbackUrl delivery failed (${url}): ${err.message}`);
+  }
+}
+
+/** Refuse a callbackUrl the server must not call, before anything is queued. */
+async function checkCallbackUrl(config) {
+  if (config?.callbackUrl) await assertPublicUrl(config.callbackUrl, 'callbackUrl');
 }
 
 // ── Job event handlers ──────────────────────────────────────────────────────

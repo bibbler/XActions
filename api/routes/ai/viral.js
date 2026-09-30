@@ -25,14 +25,14 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/viral/research */
-router.post('/research', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralResearch', { session: s, ...req.body }); });
+router.post('/research', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralResearch', { ...req.body, session: s }); });
 /** POST /api/ai/viral/generate */
-router.post('/generate', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralGenerate', { session: s, ...req.body }); });
+router.post('/generate', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralGenerate', { ...req.body, session: s }); });
 /** POST /api/ai/viral/analyze */
-router.post('/analyze', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralAnalyze', { session: s, ...req.body }); });
+router.post('/analyze', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralAnalyze', { ...req.body, session: s }); });
 /** POST /api/ai/viral/trending-hooks */
-router.post('/trending-hooks', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralTrendingHooks', { session: s, ...req.body }); });
+router.post('/trending-hooks', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralTrendingHooks', { ...req.body, session: s }); });
 /** POST /api/ai/viral/headlines */
-router.post('/headlines', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralHeadlines', { session: s, ...req.body }); });
+router.post('/headlines', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'viralHeadlines', { ...req.body, session: s }); });
 
 export default router;

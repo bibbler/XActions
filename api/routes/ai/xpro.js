@@ -31,6 +31,6 @@ const queueOp = async (res, id, type, config) => {
 /** POST /api/ai/xpro/dashboard */
 router.post('/dashboard', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'xproDashboard', { session: s }); });
 /** POST /api/ai/xpro/columns */
-router.post('/columns', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'xproColumns', { session: s, ...req.body }); });
+router.post('/columns', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'xproColumns', { ...req.body, session: s }); });
 
 export default router;

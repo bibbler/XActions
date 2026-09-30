@@ -30,16 +30,16 @@ const queueOp = async (res, id, type, config) => {
 /** POST /api/ai/settings/get */
 router.post('/get', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsGet', { session: s }); });
 /** POST /api/ai/settings/update */
-router.post('/update', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsUpdate', { session: s, ...req.body }); });
+router.post('/update', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsUpdate', { ...req.body, session: s }); });
 /** POST /api/ai/settings/protected */
-router.post('/protected', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsProtected', { session: s, ...req.body }); });
+router.post('/protected', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsProtected', { ...req.body, session: s }); });
 /** POST /api/ai/settings/blocked */
 router.post('/blocked', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsBlocked', { session: s }); });
 /** POST /api/ai/settings/muted */
 router.post('/muted', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsMuted', { session: s }); });
 /** POST /api/ai/settings/advanced */
-router.post('/advanced', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsAdvanced', { session: s, ...req.body }); });
+router.post('/advanced', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsAdvanced', { ...req.body, session: s }); });
 /** POST /api/ai/settings/block-list */
-router.post('/block-list', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsBlockList', { session: s, ...req.body }); });
+router.post('/block-list', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'settingsBlockList', { ...req.body, session: s }); });
 
 export default router;

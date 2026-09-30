@@ -92,3 +92,31 @@ describe('x402: the payment gate cannot be skipped by URL spelling', () => {
     }
   });
 });
+
+describe('callback URLs cannot reach the server\'s own network', () => {
+  const lookupTo = (address) => async () => [{ address, family: address.includes(':') ? 6 : 4 }];
+
+  it('refuses loopback, metadata, private and mapped addresses, and non-http schemes', async () => {
+    const { assertPublicUrl, PublicUrlError } = await import('../../api/utils/publicUrl.js');
+    for (const url of ['http://127.0.0.1/x', 'http://169.254.169.254/latest/meta-data/', 'http://10.0.0.5/', 'http://[::1]/', 'http://[::ffff:192.168.1.1]/', 'file:///etc/passwd', 'not a url']) {
+      await expect(assertPublicUrl(url, 'callbackUrl'), url).rejects.toBeInstanceOf(PublicUrlError);
+    }
+    await expect(assertPublicUrl('https://internal.example/', 'callbackUrl', lookupTo('192.168.0.9'))).rejects.toThrow(/private or local address/);
+    await expect(assertPublicUrl('https://hooks.example/', 'callbackUrl', lookupTo('93.184.216.34'))).resolves.toBeInstanceOf(URL);
+  });
+
+  it('lets a self-hosted operator opt in to internal hosts', async () => {
+    const { assertPublicUrl } = await import('../../api/utils/publicUrl.js');
+    process.env.XACTIONS_WEBHOOK_ALLOW_PRIVATE = 'true';
+    try {
+      await expect(assertPublicUrl('http://10.0.0.5/hook', 'callbackUrl')).resolves.toBeInstanceOf(URL);
+    } finally {
+      delete process.env.XACTIONS_WEBHOOK_ALLOW_PRIVATE;
+    }
+  });
+
+  it('A2A tasks need an account, so no anonymous caller can run paid skills free', async () => {
+    const res = await request(app).post('/api/a2a/task').send({ skill: 'xactions.x_get_profile', input: {}, callbackUrl: 'http://127.0.0.1/' });
+    expect(res.status).toBe(401);
+  });
+});

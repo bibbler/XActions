@@ -25,13 +25,13 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/timeline/view */
-router.post('/view', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineView', { session: s, ...req.body }); });
+router.post('/view', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineView', { ...req.body, session: s }); });
 /** POST /api/ai/timeline/scroll */
-router.post('/scroll', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineScroll', { session: s, ...req.body }); });
+router.post('/scroll', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineScroll', { ...req.body, session: s }); });
 /** POST /api/ai/timeline/collect */
-router.post('/collect', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineCollect', { session: s, ...req.body }); });
+router.post('/collect', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineCollect', { ...req.body, session: s }); });
 /** POST /api/ai/timeline/export */
-router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineExport', { session: s, ...req.body }); });
+router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'timelineExport', { ...req.body, session: s }); });
 /** POST /api/ai/timeline/switch-feed */
 router.post('/switch-feed', async (req, res) => { const s = requireSession(req, res); if (!s) return; const { feed = 'following' } = req.body; return queueOp(res, generateOperationId(), 'timelineSwitchFeed', { session: s, feed }); });
 

@@ -31,7 +31,7 @@
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 import { lookup as dnsLookup } from 'node:dns/promises';
-import { BlockList, isIP } from 'node:net';
+import { PublicUrlError, assertPublicUrl as assertPublic } from '../../utils/publicUrl.js';
 import { JobInputError, createJobContext, isPermanentFailure, ownerKeyForSession } from './context.js';
 import { searchTweets } from '../../../src/scrapers/twitter/http/search.js';
 import { scrapeTweets, scrapeTweetById } from '../../../src/scrapers/twitter/http/tweets.js';
@@ -281,64 +281,14 @@ function openSession(sealed) {
 
 // ── Outbound URL safety ─────────────────────────────────────────────────────
 
-const PRIVATE_RANGES = (() => {
-  const list = new BlockList();
-  const v4 = [['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
-    ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.168.0.0', 16], ['198.18.0.0', 15], ['224.0.0.0', 4], ['240.0.0.0', 4]];
-  const v6 = [['::', 128], ['::1', 128], ['fc00::', 7], ['fe80::', 10], ['ff00::', 8]];
-  for (const [net, prefix] of v4) list.addSubnet(net, prefix, 'ipv4');
-  for (const [net, prefix] of v6) list.addSubnet(net, prefix, 'ipv6');
-  return list;
-})();
-
-function isPrivateAddress(address) {
-  const family = isIP(address);
-  if (!family) return true;
-  const mapped = address.toLowerCase().match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return PRIVATE_RANGES.check(mapped[1], 'ipv4');
-  return PRIVATE_RANGES.check(address, family === 4 ? 'ipv4' : 'ipv6');
-}
-
-/**
- * Refuse a URL this server should not call on a caller's behalf: anything
- * that is not http(s), or whose host resolves to a loopback, private,
- * link-local or multicast address. A self-hosted server that delivers to its
- * own network sets XACTIONS_WEBHOOK_ALLOW_PRIVATE=true.
- *
- * @param {string} raw
- * @param {string} label - the field name, for the error
- * @param {typeof dnsLookup} [lookup]
- * @returns {Promise<URL>}
- */
-export async function assertPublicUrl(raw, label, lookup = dnsLookup) {
-  let url;
+/** The shared outbound URL check, failing the job as an input error. */
+export async function assertPublicUrl(raw, label, lookup) {
   try {
-    url = new URL(String(raw));
-  } catch {
-    throw new JobInputError(`${label} is not a valid URL`);
+    return await assertPublic(raw, label, lookup);
+  } catch (err) {
+    if (err instanceof PublicUrlError) throw new JobInputError(err.message);
+    throw err;
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new JobInputError(`${label} must be an http or https URL`);
-  if (process.env.XACTIONS_WEBHOOK_ALLOW_PRIVATE === 'true') return url;
-
-  const host = url.hostname.replace(/^\[|\]$/g, '');
-  let addresses;
-  if (isIP(host)) {
-    addresses = [host];
-  } else {
-    try {
-      addresses = (await lookup(host, { all: true })).map((a) => a.address);
-    } catch (err) {
-      throw new JobInputError(`${label} host "${host}" does not resolve (${err.code || err.message})`);
-    }
-  }
-  const blocked = addresses.find(isPrivateAddress);
-  if (blocked || addresses.length === 0) {
-    throw new JobInputError(
-      `${label} resolves to a private or local address (${blocked || 'none'}). Deliveries only go to hosts on the public internet; ` +
-        'a self-hosted server can allow internal hosts with XACTIONS_WEBHOOK_ALLOW_PRIVATE=true.',
-    );
-  }
-  return url;
 }
 
 // ── Stores ──────────────────────────────────────────────────────────────────

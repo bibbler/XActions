@@ -29,7 +29,7 @@ router.post('/follow', async (req, res) => { const s = requireSession(req, res);
 /** POST /api/ai/topics/unfollow */
 router.post('/unfollow', async (req, res) => { const s = requireSession(req, res); if (!s) return; const { topicId } = req.body; if (!topicId) return res.status(400).json({ error: 'INVALID_INPUT', message: 'topicId required' }); return queueOp(res, generateOperationId(), 'topicUnfollow', { session: s, topicId }); });
 /** POST /api/ai/topics/discover */
-router.post('/discover', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'topicDiscover', { session: s, ...req.body }); });
+router.post('/discover', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'topicDiscover', { ...req.body, session: s }); });
 /** POST /api/ai/topics/list */
 router.post('/list', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'topicList', { session: s }); });
 

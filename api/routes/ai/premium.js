@@ -29,7 +29,7 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/premium/check */
-router.post('/check', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'premiumCheck', { session: s, ...req.body }); });
+router.post('/check', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'premiumCheck', { ...req.body, session: s }); });
 /** POST /api/ai/premium/features */
 router.post('/features', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'premiumFeatures', { session: s }); });
 

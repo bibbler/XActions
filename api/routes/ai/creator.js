@@ -25,7 +25,7 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/creator/analytics */
-router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'creatorAnalytics', { session: s, ...req.body }); });
+router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'creatorAnalytics', { ...req.body, session: s }); });
 /** POST /api/ai/creator/revenue */
 router.post('/revenue', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'creatorRevenue', { session: s }); });
 /** POST /api/ai/creator/subscribers */

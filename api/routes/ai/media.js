@@ -25,16 +25,16 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/media/upload */
-router.post('/upload', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaUpload', { session: s, ...req.body }); });
+router.post('/upload', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaUpload', { ...req.body, session: s }); });
 /** POST /api/ai/media/library */
-router.post('/library', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaLibrary', { session: s, ...req.body }); });
+router.post('/library', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaLibrary', { ...req.body, session: s }); });
 /** POST /api/ai/media/analytics */
-router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaAnalytics', { session: s, ...req.body }); });
+router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaAnalytics', { ...req.body, session: s }); });
 /** POST /api/ai/media/captions */
-router.post('/captions', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaCaptions', { session: s, ...req.body }); });
+router.post('/captions', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaCaptions', { ...req.body, session: s }); });
 /** POST /api/ai/media/studio */
-router.post('/studio', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaStudio', { session: s, ...req.body }); });
+router.post('/studio', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaStudio', { ...req.body, session: s }); });
 /** POST /api/ai/media/download-batch */
-router.post('/download-batch', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaDownloadBatch', { session: s, ...req.body }); });
+router.post('/download-batch', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'mediaDownloadBatch', { ...req.body, session: s }); });
 
 export default router;

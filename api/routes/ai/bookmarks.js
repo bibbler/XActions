@@ -25,16 +25,16 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/bookmarks/export */
-router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksExport', { session: s, ...req.body }); });
+router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksExport', { ...req.body, session: s }); });
 /** POST /api/ai/bookmarks/folders */
-router.post('/folders', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksFolders', { session: s, ...req.body }); });
+router.post('/folders', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksFolders', { ...req.body, session: s }); });
 /** POST /api/ai/bookmarks/organize */
-router.post('/organize', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksOrganize', { session: s, ...req.body }); });
+router.post('/organize', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksOrganize', { ...req.body, session: s }); });
 /** POST /api/ai/bookmarks/search */
-router.post('/search', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksSearch', { session: s, ...req.body }); });
+router.post('/search', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksSearch', { ...req.body, session: s }); });
 /** POST /api/ai/bookmarks/clear */
 router.post('/clear', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksClear', { session: s }); });
 /** POST /api/ai/bookmarks/import */
-router.post('/import', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksImport', { session: s, ...req.body }); });
+router.post('/import', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'bookmarksImport', { ...req.body, session: s }); });
 
 export default router;

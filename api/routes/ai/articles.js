@@ -25,14 +25,14 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/articles/compose */
-router.post('/compose', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleCompose', { session: s, ...req.body }); });
+router.post('/compose', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleCompose', { ...req.body, session: s }); });
 /** POST /api/ai/articles/publish */
-router.post('/publish', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articlePublish', { session: s, ...req.body }); });
+router.post('/publish', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articlePublish', { ...req.body, session: s }); });
 /** POST /api/ai/articles/analytics */
-router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleAnalytics', { session: s, ...req.body }); });
+router.post('/analytics', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleAnalytics', { ...req.body, session: s }); });
 /** POST /api/ai/articles/list */
 router.post('/list', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleList', { session: s }); });
 /** POST /api/ai/articles/draft */
-router.post('/draft', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleDraft', { session: s, ...req.body }); });
+router.post('/draft', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'articleDraft', { ...req.body, session: s }); });
 
 export default router;

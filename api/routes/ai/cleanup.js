@@ -25,7 +25,7 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/cleanup/delete-tweets */
-router.post('/delete-tweets', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupDeleteTweets', { session: s, ...req.body }); });
+router.post('/delete-tweets', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupDeleteTweets', { ...req.body, session: s }); });
 /** POST /api/ai/cleanup/unlike-all */
 router.post('/unlike-all', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupUnlikeAll', { session: s }); });
 /** POST /api/ai/cleanup/clear-reposts */
@@ -33,8 +33,8 @@ router.post('/clear-reposts', async (req, res) => { const s = requireSession(req
 /** POST /api/ai/cleanup/clear-history */
 router.post('/clear-history', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupClearHistory', { session: s }); });
 /** POST /api/ai/cleanup/bulk-delete */
-router.post('/bulk-delete', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupBulkDelete', { session: s, ...req.body }); });
+router.post('/bulk-delete', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupBulkDelete', { ...req.body, session: s }); });
 /** POST /api/ai/cleanup/archive */
-router.post('/archive', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupArchive', { session: s, ...req.body }); });
+router.post('/archive', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'cleanupArchive', { ...req.body, session: s }); });
 
 export default router;

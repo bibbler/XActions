@@ -25,16 +25,16 @@ const queueOp = async (res, id, type, config) => {
 };
 
 /** POST /api/ai/leads/find */
-router.post('/find', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadFind', { session: s, ...req.body }); });
+router.post('/find', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadFind', { ...req.body, session: s }); });
 /** POST /api/ai/leads/qualify */
-router.post('/qualify', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadQualify', { session: s, ...req.body }); });
+router.post('/qualify', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadQualify', { ...req.body, session: s }); });
 /** POST /api/ai/leads/export */
-router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadExport', { session: s, ...req.body }); });
+router.post('/export', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadExport', { ...req.body, session: s }); });
 /** POST /api/ai/leads/monitor */
-router.post('/monitor', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadMonitor', { session: s, ...req.body }); });
+router.post('/monitor', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadMonitor', { ...req.body, session: s }); });
 /** POST /api/ai/leads/score */
-router.post('/score', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadScore', { session: s, ...req.body }); });
+router.post('/score', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadScore', { ...req.body, session: s }); });
 /** POST /api/ai/leads/enrich */
-router.post('/enrich', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadEnrich', { session: s, ...req.body }); });
+router.post('/enrich', async (req, res) => { const s = requireSession(req, res); if (!s) return; return queueOp(res, generateOperationId(), 'leadEnrich', { ...req.body, session: s }); });
 
 export default router;
