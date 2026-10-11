@@ -275,17 +275,19 @@ describe('draft approval gate', () => {
       // No browser session exists in the test process, so the replay reaches
       // the local backend and fails there. That failure is the proof the call
       // was actually attempted, and it must be recorded on the draft.
-      const res = await client.callTool({ name: 'x_approve_draft', arguments: { id: held.draftId } });
-      expect(res.isError).toBe(true);
-      const draft = draftsMod.getDraft(held.draftId);
+      // In approval mode the agent is refused; a person approves.
+      const self = await client.callTool({ name: 'x_approve_draft', arguments: { id: held.draftId } });
+      expect(self.isError).toBe(true);
+      expect(draftsMod.getDraft(held.draftId).status).toBe('pending');
+
+      const { approveDraftChecked } = await import('../../src/mcp/server.js');
+      const draft = await approveDraftChecked(held.draftId);
       expect(draft.status).toBe('failed');
       expect(typeof draft.error).toBe('string');
       expect(typeof draft.executedAt).toBe('string');
 
       // A draft that already ran cannot be approved a second time
-      const again = await client.callTool({ name: 'x_approve_draft', arguments: { id: held.draftId } });
-      expect(again.isError).toBe(true);
-      expect(parseText(again).error).toMatch(/only pending drafts/);
+      await expect(approveDraftChecked(held.draftId)).rejects.toThrow(/only pending drafts/);
     } finally {
       await close();
     }

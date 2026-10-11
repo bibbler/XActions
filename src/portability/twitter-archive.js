@@ -46,6 +46,8 @@ export const ARCHIVE_SECTIONS = {
   mutes: { files: ['mute'] },
   dms: { files: ['direct-messages', 'direct-messages-group'] },
   lists: { files: ['lists-created', 'lists-member', 'lists-subscribed'] },
+  bookmarks: { files: ['bookmarks'] },
+  grok: { files: ['grok-chat-item'] },
   media: { files: [] },
 };
 

@@ -40,9 +40,14 @@ const ARGS_SUMMARY_MAX = 80;
  * server (and its tool registry) unless a draft is actually being released.
  * @returns {Promise<(tool: string, args: object) => Promise<unknown>>}
  */
-async function loadExecutor() {
-  const { executeTool } = await import('../../mcp/server.js');
-  return executeTool;
+/**
+ * The approver: charges the daily action caps, then runs the stored call.
+ * Approving used to call the executor directly, so drafts approved here
+ * skipped the caps the MCP server enforces.
+ */
+async function loadApprover() {
+  const { approveDraftChecked } = await import('../../mcp/server.js');
+  return (id) => approveDraftChecked(id);
 }
 
 /**
@@ -200,7 +205,7 @@ export function showCommand(id, options = {}) {
  *
  * @param {string|undefined} id
  * @param {{all?: boolean, json?: boolean}} options
- * @param {{loadExecutor?: () => Promise<Function>}} [deps]
+ * @param {{loadApprover?: () => Promise<Function>, loadExecutor?: () => Promise<Function>}} [deps]
  * @returns {Promise<import('../../mcp/drafts.js').Draft[]>}
  */
 export async function approveCommand(id, options = {}, deps = {}) {
@@ -218,10 +223,22 @@ export async function approveCommand(id, options = {}, deps = {}) {
     return [];
   }
 
-  const execute = await (deps.loadExecutor || loadExecutor)();
+  const approve = deps.loadExecutor
+    ? await deps.loadExecutor().then((execute) => (id) => approveDraft(id, execute))
+    : await (deps.loadApprover || loadApprover)();
   const results = [];
   for (const draftId of targets) {
-    const draft = await approveDraft(draftId, execute);
+    let draft;
+    try {
+      draft = await approve(draftId);
+    } catch (error) {
+      // A daily cap refusal stops here and leaves the rest pending.
+      if (error.code !== 'ACTION_CAP_EXCEEDED') throw error;
+      if (options.json) printJson({ stopped: error.message, approved: results });
+      else console.log(`  ${chalk.yellow('⏸')} ${chalk.cyan(draftId)} ${chalk.yellow(error.message)} Still pending; approve it after ${error.resetAt}.`);
+      process.exitCode = 1;
+      return results;
+    }
     results.push(draft);
     if (!options.json) {
       const mark = draft.status === 'executed' ? chalk.green('✓') : chalk.red('✗');

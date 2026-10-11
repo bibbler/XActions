@@ -2344,7 +2344,7 @@ const TOOLS = [
   },
   {
     name: 'x_approve_draft',
-    description: 'Approve a pending draft and execute the stored tool call exactly as it was submitted. Returns the tool result and marks the draft executed; a draft that already ran is refused so nothing is posted twice.',
+    description: 'Approve a pending draft and execute the stored tool call exactly as it was submitted. Only offered when approval mode is off (drafts left from an earlier session); with approval mode on, a person approves with `xactions drafts approve <id>`. A draft that already ran is refused so nothing is posted twice.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -4421,6 +4421,27 @@ function buildToolFilter(options) {
 }
 
 /** Wrap a plain object as an MCP text result. */
+/**
+ * Approve a held draft the way a person does (`xactions drafts approve`):
+ * charge the daily caps for the stored call, then run it. A draft the cap
+ * refuses stays pending, so it can be approved once the window frees up.
+ *
+ * @param {string} id
+ * @param {object} [options] - server options (`account` picks the cap ledger)
+ * @returns {Promise<import('./drafts.js').Draft>}
+ */
+export async function approveDraftChecked(id, options = {}) {
+  const pending = drafts.getDraft(id);
+  if (pending && pending.status === 'pending') {
+    const refused = await enforceActionCap(pending.tool, pending.args, options);
+    if (refused) {
+      const body = JSON.parse(refused.content[0].text);
+      throw Object.assign(new Error(body.error), body);
+    }
+  }
+  return drafts.approveDraft(id, (tool, toolArgs) => executeTool(tool, toolArgs, options));
+}
+
 function textResult(payload, isError = false) {
   return {
     content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
@@ -4452,7 +4473,10 @@ function createMcpServer(overrides = {}) {
   // List available tools (core + plugins), minus anything filtered out
   srv.setRequestHandler(ListToolsRequestSchema, async () => {
     const { all, filter } = buildToolFilter(options);
-    return { tools: filter.filter(all) };
+    const tools = filter.filter(all);
+    // In approval mode a person approves drafts, so the agent is not offered
+    // the tool that would let it approve its own held writes.
+    return { tools: options.requireApproval ? tools.filter((t) => t.name !== 'x_approve_draft') : tools };
   });
 
   // Execute tools
@@ -4477,6 +4501,17 @@ function createMcpServer(overrides = {}) {
       }, true);
     }
 
+    // The gate exists so a person decides. An agent that could call
+    // x_approve_draft would approve its own held writes, so in approval mode
+    // approval happens outside the agent, in a terminal.
+    if (options.requireApproval && name === 'x_approve_draft') {
+      return textResult({
+        error: 'Drafts are approved by a person while approval mode is on, not by the agent.',
+        approve: `xactions drafts approve ${args?.id || '<id>'}`,
+        hint: 'Ask the user to review the draft and run that command. You can still inspect it with x_draft_status or drop it with x_discard_draft.',
+      }, true);
+    }
+
     // Draft-approval gate: hold side-effect tools instead of running them
     if (options.requireApproval && isWriteTool(name)) {
       const draft = drafts.createDraft(name, args || {});
@@ -4487,7 +4522,7 @@ function createMcpServer(overrides = {}) {
         args: draft.args,
         createdAt: draft.createdAt,
         message: `Approval mode is on. "${name}" was saved as draft ${draft.id} and has NOT been executed.`,
-        next: `Review with x_draft_status, run with x_approve_draft {"id":"${draft.id}"}, or drop with x_discard_draft.`,
+        next: `Ask the user to review it and run \`xactions drafts approve ${draft.id}\` to send it, or drop it with x_discard_draft. You cannot approve it yourself.`,
       });
     }
 
@@ -4746,7 +4781,7 @@ function printFilterStatus(serverOverrides) {
   }
   if (options.requireApproval) {
     console.error('🛡️  Approval mode: write tools are held as drafts in ' + drafts.getDraftsPath());
-    console.error('   Approve with x_approve_draft, inspect with x_list_drafts / x_draft_status.');
+    console.error('   Approve with `xactions drafts approve <id>` in a terminal; agents can inspect with x_list_drafts / x_draft_status.');
   }
   if (filter.active || options.requireApproval) console.error('');
 }

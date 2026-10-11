@@ -183,19 +183,27 @@ describe('cap enforcement with the approval gate', () => {
       let budget = parseText(await client.callTool({ name: 'x_action_budget', arguments: {} }));
       expect(budget.classes.follow.used).toBe(0);
 
-      // Two approvals run (and fail at the backend, which is the dispatch proof)
+      // The agent cannot approve its own held writes, and is not offered the tool
+      const tools = (await client.listTools()).tools.map((t) => t.name);
+      expect(tools).not.toContain('x_approve_draft');
+      const selfApproved = await client.callTool({ name: 'x_approve_draft', arguments: { id: ids[0] } });
+      expect(selfApproved.isError).toBe(true);
+      expect(parseText(selfApproved).approve).toBe(`xactions drafts approve ${ids[0]}`);
+      expect(draftsMod.getDraft(ids[0]).status).toBe('pending');
+
+      // A person approves (what `xactions drafts approve` runs). Two run, and
+      // fail at the backend, which is the dispatch proof; both are charged.
+      const { approveDraftChecked } = await import('../../src/mcp/server.js');
       for (const id of ids.slice(0, 2)) {
-        const res = await client.callTool({ name: 'x_approve_draft', arguments: { id } });
-        expect(res.isError).toBe(true);
-        expect(parseText(res).code).not.toBe('ACTION_CAP_EXCEEDED');
-        expect(draftsMod.getDraft(id).status).toBe('failed');
+        const draft = await approveDraftChecked(id, { account: 'brand' });
+        expect(draft.status).toBe('failed');
       }
       budget = parseText(await client.callTool({ name: 'x_action_budget', arguments: {} }));
       expect(budget.classes.follow.used).toBe(2);
 
       // The third is refused by the cap and remains approvable later
-      const refused = await client.callTool({ name: 'x_approve_draft', arguments: { id: ids[2] } });
-      expect(parseText(refused).code).toBe('ACTION_CAP_EXCEEDED');
+      const refused = await approveDraftChecked(ids[2], { account: 'brand' }).catch((e) => e);
+      expect(refused.code).toBe('ACTION_CAP_EXCEEDED');
       expect(draftsMod.getDraft(ids[2]).status).toBe('pending');
     } finally {
       await close();
