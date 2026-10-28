@@ -63,6 +63,100 @@ export async function translateText(text, targetLang = 'en') {
 }
 
 /**
+ * Non-linguistic pseudo-BCP 47 language codes used by Twitter.
+ * qme = media/emoji only, qam = mentions only, qht = hashtags only, zxx = no linguistic content.
+ */
+const NON_LINGUISTIC_LANGS = new Set(['qme', 'qam', 'qht', 'zxx']);
+
+/**
+ * Check if a string contains actual linguistic letters after stripping
+ * URLs, @mentions, #hashtags, and Unicode emojis.
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+export function hasLinguisticContent(str) {
+  if (!str) return false;
+  const stripped = str
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/@\w+/g, '')
+    .replace(/#\w+/g, '')
+    .replace(/\p{Extended_Pictographic}|\p{Emoji_Presentation}/gu, '')
+    .replace(/[^\p{L}]/gu, '');
+  return stripped.length > 0;
+}
+
+/**
+ * Check if text contains non-Latin scripts (e.g. Thai, CJK, Hangul, Arabic, Cyrillic, Devanagari).
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+export function hasNonLatinScript(str) {
+  if (!str) return false;
+  const stripped = str.replace(/https?:\/\/\S+/g, '').replace(/@\w+/g, '');
+  return /[^\u0000-\u024F\u1E00-\u1EFF\s\p{P}\p{S}\p{N}]/u.test(stripped);
+}
+
+/**
+ * Compare original and translated text to detect if any translation actually occurred.
+ * Strips URLs, mentions, punctuation, symbols, and spaces before case-insensitive comparison.
+ *
+ * @param {string} original
+ * @param {string} translated
+ * @returns {boolean}
+ */
+export function isSameContent(original, translated) {
+  const normalize = (s) =>
+    (s || '')
+      .toLowerCase()
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/@\w+/g, '')
+      .replace(/[\p{P}\p{S}\s]+/gu, '')
+      .trim();
+  return normalize(original) === normalize(translated);
+}
+
+/**
+ * Determine whether a tweet is a candidate for translation.
+ * Filters out:
+ * - Tweets already tagged in the target language (e.g. 'en')
+ * - Pure emoji / link / mention tweets (like '❤️❤️', '👍👍👍', 'https://t.co/...')
+ * - Twitter pseudo-language tags ('qme', 'qam', 'qht', 'zxx') unless non-Latin script is present
+ * - Undetermined text ('und') unless non-Latin script is present
+ *
+ * @param {string} text
+ * @param {string} lang
+ * @param {string} [targetLang='en']
+ * @returns {boolean}
+ */
+export function shouldAttemptTranslation(text, lang, targetLang = 'en') {
+  if (!text || !text.trim()) return false;
+  const normalizedLang = (lang || '').toLowerCase();
+  const target = targetLang.toLowerCase();
+
+  // Already in target language
+  if (normalizedLang === target) return false;
+
+  const hasLetters = hasLinguisticContent(text);
+  if (!hasLetters) return false;
+
+  const hasNonLatin = hasNonLatinScript(text);
+
+  // If Twitter classified as non-linguistic (qme/qam/qht/zxx) and no non-Latin script exists
+  if (NON_LINGUISTIC_LANGS.has(normalizedLang) && !hasNonLatin) {
+    return false;
+  }
+
+  // If undetermined and only Latin characters/numbers (e.g. "OMG! #LISAxPressPlay")
+  if (normalizedLang === 'und' && !hasNonLatin) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Batch translate non-target language tweets in-place.
  *
  * @param {object[]} tweets
@@ -79,28 +173,21 @@ export async function translateTweets(tweets, { targetLang = 'en', onProgress } 
 
   for (let i = 0; i < tweets.length; i++) {
     const t = tweets[i];
-    const lang = (t.lang || '').toLowerCase();
-    const isTargetLang = lang === target;
+    const shouldTranslate = shouldAttemptTranslation(t.text, t.lang, target);
 
-    // If tweet is already in target language (or no text), keep empty
-    if (isTargetLang) {
-      t.translatedText = '';
-      continue;
-    }
-
-    // Strip handles and URLs to see if there is actual foreign text to translate
-    const cleanText = (t.text || '')
-      .replace(/https?:\/\/\S+/g, '')
-      .replace(/@\w+/g, '')
-      .trim();
-
-    if (!cleanText) {
+    if (!shouldTranslate) {
       t.translatedText = '';
       continue;
     }
 
     try {
-      t.translatedText = await translateText(t.text, target);
+      const res = await translateText(t.text, target);
+      // Only retain translation if it actually differs from original text
+      if (res && !isSameContent(t.text, res)) {
+        t.translatedText = res;
+      } else {
+        t.translatedText = '';
+      }
     } catch {
       t.translatedText = '';
     }
