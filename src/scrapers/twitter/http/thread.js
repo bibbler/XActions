@@ -591,7 +591,7 @@ export async function scrapeConversation(client, tweetId, options = {}) {
 
   // Reconstruct the thread
   const dedupedTweets = deduplicateTweets(allTweets);
-  const { rootTweet, authorReplies, conversation } = reconstructThread(dedupedTweets);
+  const { rootTweet, authorReplies, conversation } = reconstructThread(dedupedTweets, tweetId);
 
   // Check if there's still more to fetch
   const hasMore = nextCursor !== null && allTweets.length >= limit;

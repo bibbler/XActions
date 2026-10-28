@@ -179,9 +179,16 @@ export function parseTweetData(rawTweet) {
   // ---- Determine reply flag ---------------------------------------------
   const isReply = Boolean(legacy.in_reply_to_status_id_str);
 
+  // Full untruncated text for Note Tweets / X Premium / Articles
+  const noteTweetText =
+    tweet.note_tweet?.note_tweet_results?.result?.text ||
+    tweet.article?.article_results?.result?.text ||
+    null;
+  const fullText = noteTweetText || legacy.full_text || '';
+
   return {
     id: tweet.rest_id || legacy.id_str || null,
-    text: legacy.full_text || '',
+    text: fullText,
     createdAt: toISODate(legacy.created_at),
     author,
     metrics,

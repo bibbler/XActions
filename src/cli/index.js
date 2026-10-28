@@ -32,7 +32,7 @@ import { registerSkillsCommand } from './commands/skills.js';
 import { registerDraftsCommand } from './commands/drafts.js';
 import { registerArchiveCommand } from './commands/archive.js';
 import { renderRootHelp } from './help-groups.js';
-import { createSpinner, printCompact, resolveOutputMode } from '../utils/output.js';
+import { createSpinner, flattenRecord, printCompact, resolveOutputMode } from '../utils/output.js';
 
 const program = new Command();
 
@@ -204,7 +204,7 @@ const AUTH_HINT =
  * @param {string} defaultName - Default filename stem (e.g., 'followers')
  */
 /** Record kind per smartOutput default name, so --compact knows which columns matter. */
-const COMPACT_KIND = { followers: 'user', following: 'user', tweets: 'tweet', report: 'report' };
+const COMPACT_KIND = { followers: 'user', following: 'user', tweets: 'tweet', thread: 'tweet', report: 'report' };
 
 /** Resolve output file path, defaulting relative paths to config.outputDir or ~/Downloads */
 async function resolveOutputFile(filePath) {
@@ -277,7 +277,8 @@ async function smartOutput(data, options, defaultName = 'data') {
     }
 
     if (ext === '.csv') {
-      await scrapers.exportToCSV(data, targetPath);
+      const flatData = Array.isArray(data) ? data.map(flattenRecord) : data;
+      await scrapers.exportToCSV(flatData, targetPath);
     } else {
       await scrapers.exportToJSON(data, targetPath);
     }
@@ -823,6 +824,12 @@ program
   .command('thread <url>')
   .description('Scrape a full tweet thread')
   .option('-o, --output <file>', 'Output file')
+  .option('-a, --all', 'Include all replies and commenting accounts in the conversation')
+  .option('--comments', 'Include all replies and commenting accounts (alias for --all)')
+  .option('--replies', 'Include all replies and commenting accounts (alias for --all)')
+  .option('-l, --limit <number>', 'Maximum tweets/replies to scrape when fetching comments (default: 200)')
+  .option('--google-sheets <id>', 'Export to Google Sheets')
+  .option('--sheet-name <name>', 'Sheet name for Google Sheets/Excel')
   .option('--json', 'Force JSON on stdout, ignoring --output and --google-sheets')
   .action(async (url, options) => {
     const mode = resolveOutputMode(program, options);
@@ -835,25 +842,51 @@ program
       }
 
       const client = await createTwitterHttpClient();
-      const { scrapeFullThread } = await import('../scrapers/twitter/http/thread.js');
-      const result = await scrapeFullThread(client, tweetId);
-      const thread = [result.rootTweet, ...result.authorReplies].filter(Boolean);
+      const includeComments = Boolean(options.all || options.comments || options.replies);
+      const limit = options.limit ? parseInt(options.limit, 10) : 200;
+
+      let result;
+      if (includeComments) {
+        const { scrapeConversation } = await import('../scrapers/twitter/http/thread.js');
+        result = await scrapeConversation(client, tweetId, {
+          limit,
+          onProgress: ({ fetched, limit: totalLimit }) => {
+            if (!mode.compact && !options.json) {
+              spinner.text = `Scraping thread & comments (${fetched}/${totalLimit})...`;
+            }
+          },
+        });
+      } else {
+        const { scrapeFullThread } = await import('../scrapers/twitter/http/thread.js');
+        result = await scrapeFullThread(client, tweetId);
+      }
+
+      const seen = new Set();
+      const thread = [
+        result.rootTweet,
+        ...(includeComments ? result.conversation : result.authorReplies),
+      ]
+        .filter(Boolean)
+        .filter((t) => {
+          if (!t.id || seen.has(t.id)) return false;
+          seen.add(t.id);
+          return true;
+        });
 
       assertNotEmpty(thread, 'tweets in thread', AUTH_HINT);
-      spinner.succeed(`Scraped ${thread.length} tweets in thread`);
+      spinner.succeed(`Scraped ${thread.length} tweets in thread${includeComments ? ' (including comments)' : ''}`);
 
       if (mode.compact) {
         printCompact(thread, { kind: 'tweet', fields: mode.fields });
       } else if (options.json) {
         console.log(JSON.stringify(thread, null, 2));
-      } else if (options.output) {
-        const targetPath = await resolveOutputFile(options.output);
-        await scrapers.exportToJSON(thread, targetPath);
-        console.log(chalk.green(`✓ Saved to ${targetPath}`));
+      } else if (options.output || options.googleSheets) {
+        await smartOutput(thread, options, 'thread');
       } else {
-        console.log('\n' + chalk.bold('🧵 Thread:\n'));
+        console.log('\n' + chalk.bold(`🧵 Thread (${thread.length} posts):\n`));
         thread.forEach((tweet, i) => {
-          console.log(chalk.cyan(`${i + 1}.`) + ` ${tweet.text?.slice(0, 100)}...`);
+          const author = tweet.author?.username ? chalk.yellow(`@${tweet.author.username}`) + ' ' : '';
+          console.log(chalk.cyan(`${i + 1}.`) + ` ${author}${tweet.text?.slice(0, 100)}...`);
           console.log(chalk.gray(`   ${tweet.createdAt || tweet.timestamp || ''}\n`));
         });
       }

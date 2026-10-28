@@ -695,6 +695,27 @@ describe('parseTweetData', () => {
       username: 'someuser',
     });
   });
+
+  it('parses full note tweet text when note_tweet is present', () => {
+    const raw = buildRawTweet({
+      full_text: 'Short truncated text https://t.co/abc',
+      _tweetLevel: {
+        note_tweet: {
+          note_tweet_results: {
+            result: {
+              text: 'This is the full untruncated note tweet content with thousands of characters.',
+            },
+          },
+        },
+      },
+    });
+    delete raw.legacy._tweetLevel;
+    const result = parseTweetData(raw);
+
+    expect(result.text).toBe(
+      'This is the full untruncated note tweet content with thousands of characters.',
+    );
+  });
 });
 
 describe('parseTimelineInstructions', () => {
