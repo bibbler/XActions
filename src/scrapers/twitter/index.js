@@ -993,7 +993,15 @@ export async function exportToJSON(data, filename) {
 export async function exportToCSV(data, filename) {
   if (!data.length) return filename;
   
-  const headers = Object.keys(data[0]);
+  const allKeys = new Set();
+  for (const row of data) {
+    if (row && typeof row === 'object') {
+      for (const k of Object.keys(row)) {
+        allKeys.add(k);
+      }
+    }
+  }
+  const headers = [...allKeys];
   const csvRows = [
     headers.join(','),
     ...data.map(row => 

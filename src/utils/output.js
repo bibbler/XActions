@@ -35,6 +35,7 @@ export const CANONICAL_FIELDS = [
   'retweets',
   'replies',
   'views',
+  'mediaUrls',
   'followers',
   'following',
   'tweets',
@@ -49,7 +50,7 @@ export const CANONICAL_FIELDS = [
 
 /** Default columns per record kind. Text always goes last so a line stays scannable. */
 export const DEFAULT_FIELDS = {
-  tweet: ['id', 'username', 'date', 'likes', 'retweets', 'replies', 'views', 'text'],
+  tweet: ['id', 'username', 'date', 'likes', 'retweets', 'replies', 'views', 'mediaUrls', 'text'],
   profile: ['id', 'username', 'name', 'followers', 'following', 'tweets', 'verified', 'bio'],
   user: ['id', 'username', 'name', 'followers', 'verified', 'bio'],
   media: ['type', 'url', 'tweetUrl'],
@@ -75,7 +76,10 @@ export const DEFAULT_FIELDS = {
 export function parseFields(value) {
   if (!value) return null;
   const list = Array.isArray(value) ? value : String(value).split(',');
-  const fields = list.map((f) => f.trim()).filter(Boolean);
+  const fields = list
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .map((f) => (f === 'media' ? 'mediaUrls' : f));
   return fields.length ? fields : null;
 }
 
@@ -142,6 +146,55 @@ export function formatTimestamp(
 const toIsoDate = formatTimestamp;
 
 /**
+ * Extract direct media source URLs (images and videos) from a record.
+ * Handles HTTP client objects, legacy Twitter entities, and browser scraper shapes.
+ *
+ * @param {object} record
+ * @returns {string} Comma-separated media source URLs, or empty string
+ */
+export function extractMediaUrls(record) {
+  if (!record || typeof record !== 'object') return '';
+  if (typeof record.mediaUrls === 'string' && record.mediaUrls) return record.mediaUrls;
+  const urls = [];
+
+  // Check record.media
+  if (Array.isArray(record.media)) {
+    for (const m of record.media) {
+      if (typeof m === 'string' && m.trim()) {
+        urls.push(m.trim());
+      } else if (m && typeof m === 'object') {
+        const url = m.videoUrl || m.url || m.media_url_https || m.media_url;
+        if (url && typeof url === 'string') {
+          urls.push(url.trim());
+        }
+      }
+    }
+  }
+
+  // Check record.photos
+  if (Array.isArray(record.photos)) {
+    for (const p of record.photos) {
+      const url = typeof p === 'string' ? p : p?.url;
+      if (url && typeof url === 'string') {
+        urls.push(url.trim());
+      }
+    }
+  }
+
+  // Check record.videos
+  if (Array.isArray(record.videos)) {
+    for (const v of record.videos) {
+      const url = typeof v === 'string' ? v : (v?.videoUrl || v?.url);
+      if (url && typeof url === 'string') {
+        urls.push(url.trim());
+      }
+    }
+  }
+
+  return [...new Set(urls)].join(', ');
+}
+
+/**
  * Reduce one record to the canonical flat vocabulary.
  *
  * Tweets arrive in two shapes (the HTTP client's model with `likes` at the top
@@ -164,6 +217,7 @@ export function flattenRecord(record) {
   const formattedCreatedAt = formatTimestamp(
     first(record.createdAt, record.timeParsed, record.timestamp, record.date)
   );
+  const mediaUrlsStr = extractMediaUrls(record);
 
   const flat = {
     id: first(record.id, record.tweetId, record.userId),
@@ -182,6 +236,7 @@ export function flattenRecord(record) {
     retweets: first(record.retweets, metrics.retweets, record.retweetCount),
     replies: first(record.replies, metrics.replies, record.replyCount),
     views: first(record.views, metrics.views, record.viewCount),
+    mediaUrls: mediaUrlsStr,
     followers: first(record.followers, record.followersCount),
     following: first(record.following, record.followingCount),
     tweets: first(record.tweets, record.tweetCount, record.statusesCount),
@@ -287,7 +342,7 @@ export function formatCompact(data, { kind = 'record', fields = null } = {}) {
       const cells = [];
       for (const key of columns) {
         const value = key in flat ? flat[key] : record?.[key];
-        if (value === undefined) continue;
+        if (value === undefined || value === '') continue;
         cells.push(`${key}=${formatValue(value)}`);
       }
       return cells.join('\t');

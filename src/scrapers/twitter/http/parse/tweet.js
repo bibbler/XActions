@@ -171,6 +171,7 @@ export function parseTweetData(rawTweet) {
       videoUrl: m.video_info ? pickBestVideoUrl(m.video_info.variants) : null,
     };
   });
+  const mediaUrls = media.map((m) => m.videoUrl || m.url).filter(Boolean).join(', ');
 
   // ---- Quote tweet (recursive) ------------------------------------------
   let quotedTweet = null;
@@ -232,6 +233,7 @@ export function parseTweetData(rawTweet) {
     author,
     metrics,
     media,
+    mediaUrls,
     quotedTweet,
     inReplyTo,
     urls,
