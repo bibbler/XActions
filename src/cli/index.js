@@ -206,6 +206,18 @@ const AUTH_HINT =
 /** Record kind per smartOutput default name, so --compact knows which columns matter. */
 const COMPACT_KIND = { followers: 'user', following: 'user', tweets: 'tweet', report: 'report' };
 
+/** Resolve output file path, defaulting relative paths to config.outputDir or ~/Downloads */
+async function resolveOutputFile(filePath) {
+  if (!filePath) return filePath;
+  if (path.isAbsolute(filePath)) return filePath;
+  const config = await loadConfig();
+  const baseDir = config.outputDir || process.env.XACTIONS_OUTPUT_DIR || path.join(os.homedir(), 'Downloads');
+  try {
+    await fs.mkdir(baseDir, { recursive: true });
+  } catch {}
+  return path.join(baseDir, filePath);
+}
+
 async function smartOutput(data, options, defaultName = 'data') {
   // `--compact` is the agent-facing sibling of `--json`: one record per line,
   // essential fields only. Like `--json` it is a stdout contract and wins
@@ -246,16 +258,17 @@ async function smartOutput(data, options, defaultName = 'data') {
 
   // File output
   if (options.output) {
-    const ext = path.extname(options.output).toLowerCase();
+    const targetPath = await resolveOutputFile(options.output);
+    const ext = path.extname(targetPath).toLowerCase();
 
     if (ext === '.xlsx') {
       try {
         const { exportToExcel } = await import('../plugins/excel/index.js');
         const result = await exportToExcel(data, {
-          filepath: options.output,
+          filepath: targetPath,
           sheetName: options.sheetName || defaultName,
         });
-        console.log(chalk.green(`✓ Saved ${result.rowsWritten} rows to ${options.output}`));
+        console.log(chalk.green(`✓ Saved ${result.rowsWritten} rows to ${targetPath}`));
         return;
       } catch (error) {
         console.error(chalk.red(`Excel export failed: ${error.message}`));
@@ -264,11 +277,11 @@ async function smartOutput(data, options, defaultName = 'data') {
     }
 
     if (ext === '.csv') {
-      await scrapers.exportToCSV(data, options.output);
+      await scrapers.exportToCSV(data, targetPath);
     } else {
-      await scrapers.exportToJSON(data, options.output);
+      await scrapers.exportToJSON(data, targetPath);
     }
-    console.log(chalk.green(`✓ Saved to ${options.output}`));
+    console.log(chalk.green(`✓ Saved to ${targetPath}`));
     return;
   }
 
@@ -451,6 +464,32 @@ program
     // is read before the config, so leaving it kept the session logged in.
     await fs.rm(COOKIE_FILE, { force: true });
     console.log(chalk.green('\n✓ Logged out: the saved session and cookies are removed\n'));
+  });
+
+program
+  .command('config [action] [key] [value]')
+  .description('View or update XActions configuration settings (~/.xactions/config.json)')
+  .action(async (action = 'list', key, value) => {
+    const config = await loadConfig();
+    if (action === 'set' && key) {
+      config[key] = value;
+      await saveConfig(config);
+      console.log(chalk.green(`✓ Set ${key} = ${value}`));
+      return;
+    }
+    if (action === 'get' && key) {
+      console.log(config[key] !== undefined ? config[key] : chalk.dim('(not set)'));
+      return;
+    }
+    console.log(chalk.bold('\n⚙️  XActions Configuration (~/.xactions/config.json):\n'));
+    for (const [k, v] of Object.entries(config)) {
+      if (k === 'authToken' || k === 'csrfToken') {
+        console.log(`  ${chalk.cyan(k)}: ${v ? v.slice(0, 6) + '...' + v.slice(-4) : '(empty)'}`);
+      } else {
+        console.log(`  ${chalk.cyan(k)}: ${v}`);
+      }
+    }
+    console.log();
   });
 
 // ============================================================================
@@ -808,8 +847,9 @@ program
       } else if (options.json) {
         console.log(JSON.stringify(thread, null, 2));
       } else if (options.output) {
-        await scrapers.exportToJSON(thread, options.output);
-        console.log(chalk.green(`✓ Saved to ${options.output}`));
+        const targetPath = await resolveOutputFile(options.output);
+        await scrapers.exportToJSON(thread, targetPath);
+        console.log(chalk.green(`✓ Saved to ${targetPath}`));
       } else {
         console.log('\n' + chalk.bold('🧵 Thread:\n'));
         thread.forEach((tweet, i) => {
@@ -857,8 +897,9 @@ program
       } else if (options.json) {
         console.log(JSON.stringify(media, null, 2));
       } else if (options.output) {
-        await scrapers.exportToJSON(media, options.output);
-        console.log(chalk.green(`✓ Saved to ${options.output}`));
+        const targetPath = await resolveOutputFile(options.output);
+        await scrapers.exportToJSON(media, targetPath);
+        console.log(chalk.green(`✓ Saved to ${targetPath}`));
       } else {
         console.log(JSON.stringify(media, null, 2));
       }

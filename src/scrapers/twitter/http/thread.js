@@ -85,7 +85,7 @@ export function parseConversationModule(module) {
       item?.itemContent ??
       null;
 
-    if (!itemContent) continue;
+    if (!itemContent || itemContent.promotedMetadata || item?.item?.itemContent?.promotedMetadata) continue;
 
     // Tweet entry
     const tweetResult = itemContent.tweet_results?.result;
@@ -147,6 +147,7 @@ function parseTweetDetailResponse(response) {
 
         // ---- Single tweet entry (tweet-{id}) ----------------------------
         if (entryType === 'TimelineTimelineItem' || entryId.startsWith('tweet-')) {
+          if (entryId.startsWith('promoted-') || entry.content?.itemContent?.promotedMetadata) continue;
           const tweetResult =
             entry.content?.itemContent?.tweet_results?.result ?? null;
           if (tweetResult) {
@@ -239,7 +240,7 @@ function parseTweetDetailResponse(response) {
  *   tree: Map<string|null, object[]>,
  * }}
  */
-export function reconstructThread(tweets) {
+export function reconstructThread(tweets, focalTweetId = null) {
   if (!tweets || tweets.length === 0) {
     return { rootTweet: null, authorReplies: [], conversation: [], tree: new Map() };
   }
@@ -262,9 +263,18 @@ export function reconstructThread(tweets) {
     }
   }
 
-  // Sort roots chronologically and pick the earliest as THE root
-  const sortedRoots = sortChronologically(roots);
-  const rootTweet = sortedRoots[0] || tweets[0] || null;
+  // Prefer tracing from the focal tweet if provided, otherwise pick earliest root
+  let rootTweet = null;
+  if (focalTweetId && tweetMap.has(focalTweetId)) {
+    let curr = tweetMap.get(focalTweetId);
+    while (curr.inReplyTo?.tweetId && tweetMap.has(curr.inReplyTo.tweetId)) {
+      curr = tweetMap.get(curr.inReplyTo.tweetId);
+    }
+    rootTweet = curr;
+  } else {
+    const sortedRoots = sortChronologically(roots);
+    rootTweet = sortedRoots[0] || tweets[0] || null;
+  }
 
   // Build parent → children map (tree)
   const tree = new Map();
@@ -404,7 +414,7 @@ export async function scrapeThread(client, tweetId, options = {}) {
         c.type === 'ShowMoreThreadsPrompt',
     ) ?? null;
 
-  const { rootTweet, authorReplies, conversation } = reconstructThread(tweets);
+  const { rootTweet, authorReplies, conversation } = reconstructThread(tweets, tweetId);
 
   return {
     rootTweet,

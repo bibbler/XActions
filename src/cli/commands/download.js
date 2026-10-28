@@ -23,7 +23,8 @@
  * @license Apache-2.0
  */
 
-import { join } from 'node:path';
+import { join, isAbsolute } from 'node:path';
+import os from 'node:os';
 
 import chalk from 'chalk';
 
@@ -68,7 +69,15 @@ export async function downloadCommand(target, options, deps) {
     }
   }
 
-  const outputDir = options.output || './media';
+  let config = {};
+  try {
+    config = await loadConfig();
+  } catch {}
+
+  const defaultBase = config.downloadDir || config.outputDir || process.env.XACTIONS_OUTPUT_DIR || join(os.homedir(), 'Downloads');
+  const outputDir = options.output
+    ? (isAbsolute(options.output) ? options.output : join(defaultBase, options.output))
+    : join(defaultBase, 'media');
   // `--archive` with no value means "beside the files", which is what someone
   // syncing a folder nightly wants; an explicit path wins.
   const archivePath =
@@ -79,7 +88,6 @@ export async function downloadCommand(target, options, deps) {
 
   let scrapers;
   try {
-    const config = await loadConfig();
     scrapers = await createHttpScraper({ cookies: config.cookies, ...(config.httpScraper || {}) });
   } catch (error) {
     console.error(chalk.red(`Could not start a scraper: ${error.message}`));
