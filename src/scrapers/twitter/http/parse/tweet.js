@@ -14,17 +14,53 @@
 import { NotFoundError } from '../errors.js';
 
 /**
- * Parse Twitter's `created_at` string ("Mon Jan 01 00:00:00 +0000 2007")
- * into an ISO-8601 date string.
+ * Format Twitter's `created_at` string ("Mon Jan 01 00:00:00 +0000 2007")
+ * strictly as YYYY-MM-DD HH:mm:ss without 'T' and without time zone designators.
  *
  * @param {string|null} raw
+ * @param {string} [timeZone]
  * @returns {string|null}
  */
-function toISODate(raw) {
+export function formatTimestamp(
+  raw,
+  timeZone = process.env.XACTIONS_TIMEZONE || process.env.TZ || 'America/Los_Angeles'
+) {
   if (!raw) return null;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? raw : d.toISOString();
+  if (typeof raw === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)) {
+    return raw;
+  }
+  const rawNum =
+    typeof raw === 'number'
+      ? raw
+      : typeof raw === 'string' && /^\d{10,13}$/.test(raw)
+        ? Number(raw)
+        : NaN;
+  const d =
+    raw instanceof Date
+      ? raw
+      : !Number.isNaN(rawNum)
+        ? new Date(rawNum < 1e11 ? rawNum * 1000 : rawNum)
+        : new Date(raw);
+  if (Number.isNaN(d.getTime())) return String(raw);
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(d);
+  const m = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const hour = m.hour === '24' ? '00' : m.hour;
+  return `${m.year}-${m.month}-${m.day} ${hour}:${m.minute}:${m.second}`;
 }
+
+const toISODate = formatTimestamp;
 
 /**
  * Select the highest-bitrate MP4 variant from a video_info.variants array.
@@ -186,10 +222,13 @@ export function parseTweetData(rawTweet) {
     null;
   const fullText = noteTweetText || legacy.full_text || '';
 
+  const formattedCreatedAt = formatTimestamp(legacy.created_at);
+
   return {
     id: tweet.rest_id || legacy.id_str || null,
     text: fullText,
-    createdAt: toISODate(legacy.created_at),
+    createdAt: formattedCreatedAt,
+    date: formattedCreatedAt,
     author,
     metrics,
     media,

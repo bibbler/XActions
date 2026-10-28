@@ -30,6 +30,7 @@ export const CANONICAL_FIELDS = [
   'username',
   'name',
   'date',
+  'createdAt',
   'likes',
   'retweets',
   'replies',
@@ -91,18 +92,54 @@ function first(...candidates) {
 }
 
 /**
- * Normalise the three date shapes the scrapers produce (Date, epoch
- * milliseconds, ISO or display string) to one ISO string.
+ * Normalise date shapes to a clean timestamp: YYYY-MM-DD HH:mm:ss.
+ * Strictly no 'T' separator, and no time zone designators or offsets (like 'Z' or '+00:00').
+ * Defaults to America/Los_Angeles (Pacific Time) as preferred.
+ *
  * @param {unknown} value
+ * @param {string} [timeZone]
  * @returns {string|undefined}
  */
-function toIsoDate(value) {
-  if (value === undefined) return undefined;
-  if (value instanceof Date) return Number.isNaN(value.valueOf()) ? undefined : value.toISOString();
-  if (typeof value === 'number') return new Date(value < 1e11 ? value * 1000 : value).toISOString();
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf()) ? String(value) : parsed.toISOString();
+export function formatTimestamp(
+  value,
+  timeZone = process.env.XACTIONS_TIMEZONE || process.env.TZ || 'America/Los_Angeles'
+) {
+  if (value === undefined || value === null || value === '') return undefined;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+    return value;
+  }
+  const rawNum =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && /^\d{10,13}$/.test(value)
+        ? Number(value)
+        : NaN;
+  const d =
+    value instanceof Date
+      ? value
+      : !Number.isNaN(rawNum)
+        ? new Date(rawNum < 1e11 ? rawNum * 1000 : rawNum)
+        : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(d);
+  const m = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+  const hour = m.hour === '24' ? '00' : m.hour;
+  return `${m.year}-${m.month}-${m.day} ${hour}:${m.minute}:${m.second}`;
 }
+
+const toIsoDate = formatTimestamp;
 
 /**
  * Reduce one record to the canonical flat vocabulary.
@@ -121,6 +158,13 @@ export function flattenRecord(record) {
   const metrics = record.metrics || {};
   const author = record.author || {};
 
+  const formattedDate = formatTimestamp(
+    first(record.timeParsed, record.timestamp, record.createdAt, record.date, record.joined)
+  );
+  const formattedCreatedAt = formatTimestamp(
+    first(record.createdAt, record.timeParsed, record.timestamp, record.date)
+  );
+
   const flat = {
     id: first(record.id, record.tweetId, record.userId),
     username: first(
@@ -132,7 +176,8 @@ export function flattenRecord(record) {
       record.handle,
     ),
     name: first(record.name, author.name, record.displayName),
-    date: toIsoDate(first(record.timeParsed, record.timestamp, record.createdAt, record.date, record.joined)),
+    date: formattedDate,
+    createdAt: formattedCreatedAt,
     likes: first(record.likes, metrics.likes, record.likesCount, record.favoriteCount),
     retweets: first(record.retweets, metrics.retweets, record.retweetCount),
     replies: first(record.replies, metrics.replies, record.replyCount),
@@ -153,7 +198,17 @@ export function flattenRecord(record) {
   // Keep every other primitive the record carried so `--fields` can name it.
   for (const [key, value] of Object.entries(record)) {
     if (flat[key] === undefined && (typeof value !== 'object' || value === null || value instanceof Date)) {
-      flat[key] = value;
+      if (
+        key === 'createdAt' ||
+        key === 'date' ||
+        key === 'timestamp' ||
+        key === 'joined' ||
+        key === 'timeParsed'
+      ) {
+        flat[key] = formatTimestamp(value);
+      } else {
+        flat[key] = value;
+      }
     }
   }
 

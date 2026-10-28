@@ -559,7 +559,8 @@ describe('parseTweetData', () => {
     expect(result).toBeTruthy();
     expect(result.id).toBe('1234567890');
     expect(result.text).toBe('Hello world! This is a test tweet.');
-    expect(result.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    expect(result.createdAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(result.date).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     expect(result.platform).toBe('twitter');
 
     // Author

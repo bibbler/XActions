@@ -59,7 +59,7 @@ describe('output', () => {
       for (const key of ['id', 'username', 'likes', 'retweets', 'replies', 'views', 'date']) {
         expect(a[key]).toEqual(b[key]);
       }
-      expect(a.date).toBe('2026-08-27T10:00:00.000Z');
+      expect(a.date).toBe('2026-08-27 03:00:00');
       expect(b.verified).toBe(true);
     });
 
@@ -75,8 +75,8 @@ describe('output', () => {
       expect(flat).toHaveProperty('permanentUrl');
     });
 
-    it('turns epoch milliseconds into ISO', () => {
-      expect(flattenRecord({ timestamp: Date.UTC(2026, 7, 27) }).date).toBe('2026-08-27T00:00:00.000Z');
+    it('turns epoch milliseconds into formatted timestamp', () => {
+      expect(flattenRecord({ timestamp: Date.UTC(2026, 7, 27) }).date).toBe('2026-08-26 17:00:00');
     });
   });
 
@@ -96,7 +96,7 @@ describe('output', () => {
       const lines = out.split('\n');
       expect(lines).toHaveLength(2);
       expect(lines[0]).toBe(
-        'id=1\tusername=nasa\tdate=2026-08-27T10:00:00.000Z\tlikes=10\tretweets=2\treplies=1\tviews=500\ttext=Hello world with tabs',
+        'id=1\tusername=nasa\tdate=2026-08-27 03:00:00\tlikes=10\tretweets=2\treplies=1\tviews=500\ttext=Hello world with tabs',
       );
       expect(lines[0].split('\t').map((c) => c.split('=')[0])).toEqual(DEFAULT_FIELDS.tweet);
     });
