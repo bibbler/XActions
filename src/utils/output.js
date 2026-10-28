@@ -35,7 +35,6 @@ export const CANONICAL_FIELDS = [
   'retweets',
   'replies',
   'views',
-  'mediaUrls',
   'followers',
   'following',
   'tweets',
@@ -46,11 +45,13 @@ export const CANONICAL_FIELDS = [
   'url',
   'bio',
   'text',
+  'translatedText',
+  'mediaUrls',
 ];
 
 /** Default columns per record kind. Text always goes last so a line stays scannable. */
 export const DEFAULT_FIELDS = {
-  tweet: ['id', 'username', 'date', 'likes', 'retweets', 'replies', 'views', 'mediaUrls', 'text'],
+  tweet: ['id', 'username', 'date', 'likes', 'retweets', 'replies', 'views', 'text', 'mediaUrls'],
   profile: ['id', 'username', 'name', 'followers', 'following', 'tweets', 'verified', 'bio'],
   user: ['id', 'username', 'name', 'followers', 'verified', 'bio'],
   media: ['type', 'url', 'tweetUrl'],
@@ -236,7 +237,6 @@ export function flattenRecord(record) {
     retweets: first(record.retweets, metrics.retweets, record.retweetCount),
     replies: first(record.replies, metrics.replies, record.replyCount),
     views: first(record.views, metrics.views, record.viewCount),
-    mediaUrls: mediaUrlsStr,
     followers: first(record.followers, record.followersCount),
     following: first(record.following, record.followingCount),
     tweets: first(record.tweets, record.tweetCount, record.statusesCount),
@@ -248,6 +248,7 @@ export function flattenRecord(record) {
     tweetUrl: record.tweetUrl,
     bio: first(record.bio, record.description),
     text: first(record.text, record.fullText),
+    translatedText: record.translatedText || '',
   };
 
   // Keep every other primitive the record carried so `--fields` can name it.
@@ -266,6 +267,9 @@ export function flattenRecord(record) {
       }
     }
   }
+
+  // Ensure mediaUrls is always placed at the very end of the record
+  flat.mediaUrls = mediaUrlsStr || '';
 
   return Object.fromEntries(Object.entries(flat).filter(([, v]) => v !== undefined));
 }

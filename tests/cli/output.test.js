@@ -96,7 +96,7 @@ describe('output', () => {
       const lines = out.split('\n');
       expect(lines).toHaveLength(2);
       expect(lines[0]).toBe(
-        'id=1\tusername=nasa\tdate=2026-08-27 03:00:00\tlikes=10\tretweets=2\treplies=1\tviews=500\tmediaUrls=https://pbs.twimg.com/a.jpg\ttext=Hello world with tabs',
+        'id=1\tusername=nasa\tdate=2026-08-27 03:00:00\tlikes=10\tretweets=2\treplies=1\tviews=500\ttext=Hello world with tabs\tmediaUrls=https://pbs.twimg.com/a.jpg',
       );
       expect(lines[0].split('\t').map((c) => c.split('=')[0])).toEqual(DEFAULT_FIELDS.tweet);
     });

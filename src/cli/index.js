@@ -828,6 +828,7 @@ program
   .option('--comments', 'Include all replies and commenting accounts (alias for --all)')
   .option('--replies', 'Include all replies and commenting accounts (alias for --all)')
   .option('-l, --limit <number>', 'Maximum tweets/replies to scrape when fetching comments (default: 200)')
+  .option('-t, --translate [lang]', 'Translate non-English posts (default target: en)')
   .option('--google-sheets <id>', 'Export to Google Sheets')
   .option('--sheet-name <name>', 'Sheet name for Google Sheets/Excel')
   .option('--json', 'Force JSON on stdout, ignoring --output and --google-sheets')
@@ -876,8 +877,24 @@ program
       assertNotEmpty(thread, 'tweets in thread', AUTH_HINT);
       spinner.succeed(`Scraped ${thread.length} tweets in thread${includeComments ? ' (including comments)' : ''}`);
 
+      if (options.translate) {
+        const targetLang = typeof options.translate === 'string' ? options.translate : 'en';
+        if (!mode.compact && !options.json) {
+          spinner.start(`Translating non-${targetLang} posts...`);
+        }
+        const { translateTweets } = await import('../utils/translate.js');
+        await translateTweets(thread, { targetLang });
+        if (!mode.compact && !options.json) {
+          spinner.succeed(`Translated non-${targetLang} posts`);
+        }
+      }
+
       if (mode.compact) {
-        printCompact(thread, { kind: 'tweet', fields: mode.fields });
+        const compactFields =
+          options.translate && !mode.fields
+            ? ['id', 'username', 'date', 'likes', 'retweets', 'replies', 'views', 'text', 'translatedText', 'mediaUrls']
+            : mode.fields;
+        printCompact(thread, { kind: 'tweet', fields: compactFields });
       } else if (options.json) {
         console.log(JSON.stringify(thread, null, 2));
       } else if (options.output || options.googleSheets) {
@@ -887,7 +904,10 @@ program
         thread.forEach((tweet, i) => {
           const author = tweet.author?.username ? chalk.yellow(`@${tweet.author.username}`) + ' ' : '';
           console.log(chalk.cyan(`${i + 1}.`) + ` ${author}${tweet.text?.slice(0, 100)}...`);
-          console.log(chalk.gray(`   ${tweet.createdAt || tweet.timestamp || ''}\n`));
+          if (tweet.translatedText) {
+            console.log(chalk.magenta(`   🌐 Translation:`) + ` ${tweet.translatedText.slice(0, 100)}...`);
+          }
+          console.log(chalk.gray(`   ${tweet.createdAt || tweet.date || tweet.timestamp || ''}\n`));
         });
       }
     } catch (error) {

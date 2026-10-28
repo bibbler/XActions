@@ -1001,6 +1001,11 @@ export async function exportToCSV(data, filename) {
       }
     }
   }
+  // Keep mediaUrls at the very end of the columns
+  if (allKeys.has('mediaUrls')) {
+    allKeys.delete('mediaUrls');
+    allKeys.add('mediaUrls');
+  }
   const headers = [...allKeys];
   const csvRows = [
     headers.join(','),
